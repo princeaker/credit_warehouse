@@ -180,6 +180,37 @@ resource "snowflake_database" "credit_data_platform" {
   is_transient = false
 }
 
+resource "snowflake_warehouse" "credit_data_platform_warehouse" {
+  provider           = snowflake.sysadmin
+  name               = "CREDIT_DATA_PLATFORM_WH"
+  warehouse_size     = "XSMALL"
+  warehouse_type     = "STANDARD"
+  auto_suspend       = 60
+  auto_resume        = true
+}
+
+resource "snowflake_grant_privileges_to_account_role" "warehouse_usage_grant" {
+  provider = snowflake.sysadmin
+  privileges = ["USAGE"]
+  account_role_name  = var.dbt_role
+
+  on_account_object {
+    object_type = "WAREHOUSE"
+    object_name = snowflake_warehouse.credit_data_platform_warehouse.fully_qualified_name
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "database_usage_grant" {
+  provider = snowflake.sysadmin
+  all_privileges = true
+  account_role_name  = var.dbt_role
+
+  on_account_object {
+    object_type = "DATABASE"
+    object_name = snowflake_database.credit_data_platform.name
+  }
+}
+
 # A stage is a Snowflake object that acts a temporary storage area for data files that are being loaded into Snowflake.
 resource "snowflake_stage_external_s3" "world_bank_data_stage" {
   provider = snowflake.sysadmin
