@@ -285,12 +285,8 @@ resource "snowflake_user" "dbt_svc" {
   must_change_password = false
 }
 
-resource "snowflake_grant_privileges_to_account_role" "dbt_svc_role" {
+resource "snowflake_grant_account_role" "dbt_svc_role_grant" {
   provider = snowflake.accountadmin
-  account_role_name = var.dbt_role
-  all_privileges = true
-  on_account_object {
-    object_type = "USER"
-    object_name = snowflake_user.dbt_svc.name
-  }
+  role_name = var.dbt_role
+  user_name = snowflake_user.dbt_svc.name
 }
