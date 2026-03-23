@@ -9,3 +9,8 @@ variable "dbt_role" {
   type        = string
   default     = "DBT_ROLE"
 }
+
+variable "dbt_svc_password" {
+  type      = string
+  sensitive = true
+}

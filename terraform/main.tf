@@ -185,6 +185,7 @@ resource "snowflake_warehouse" "credit_data_platform_warehouse" {
   name               = "CREDIT_DATA_PLATFORM_WH"
   warehouse_size     = "XSMALL"
   warehouse_type     = "STANDARD"
+  generation         = "2"
   auto_suspend       = 60
   auto_resume        = true
 }
@@ -272,5 +273,24 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     filter_prefix = "loan-snapshots/"
 
     queue_arn = snowflake_pipe.world_bank_data_pipe.notification_channel
+  }
+}
+
+resource "snowflake_user" "dbt_svc" {
+  provider = snowflake.accountadmin
+  name              = "DBT_SVC"
+  password          = var.dbt_svc_password
+  default_role      = var.dbt_role
+  default_warehouse = snowflake_warehouse.credit_data_platform_warehouse.fully_qualified_name
+  must_change_password = false
+}
+
+resource "snowflake_grant_privileges_to_account_role" "dbt_svc_role" {
+  provider = snowflake.accountadmin
+  account_role_name = var.dbt_role
+  all_privileges = true
+  on_account_object {
+    object_type = "USER"
+    object_name = snowflake_user.dbt_svc.name
   }
 }
