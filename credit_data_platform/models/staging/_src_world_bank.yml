@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: world_bank
+    database: CREDIT_DATA_PLATFORM
+    schema: RAW
+    tables:
+      - name: snowpipe_loan_snapshots
