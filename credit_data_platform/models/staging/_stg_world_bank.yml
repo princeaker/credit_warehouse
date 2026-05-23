@@ -1,0 +1,123 @@
+version: 2
+
+models:
+  - name: stg_ibrd__loan_snapshots
+    description: This staging table unnests the JSON data from the source table and applies basic transformations to 
+      make it more usable for downstream models. Each record captures IBRD loan snapshots as of the date the snapshot was taken.
+    columns:
+      - name: agreement_signing_date
+        data_type: date
+        description: The date the borrower and the Bank sign the loan agreement
+      - name: board_approval_date
+        data_type: date
+        description: The date the World Bank approved the loan
+      - name: borrower
+        data_type: string
+        description: The name of the borrower
+      - name: borrowers_obligation_usd
+        data_type: decimal(12, 2)
+        description: The Borrower Obligation is the outstanding balance for the loan as of the end of period date in US dollars equivalent. 
+          The Borrower's Obligation includes the amounts outstanding Due to 3rd parties.
+      - name: cancelled_amount_usd
+        data_type: decimal(12, 2)
+        description: The portion of the undisbursed balance which has been cancelled (i.e. no longer available for future disbursement). 
+          Cancellations include terminations (where approved loan agreements were never signed)
+      - name: closed_date_most_recent
+        data_type: date
+        description: The date specified in the legal agreement (or extension) after which the Bank may, by notice to the borrower, 
+          terminate the right to make withdrawals from the loan account.
+      - name: country
+        data_type: string
+        description: Country / Economy to which loan has been issued. Loans to the IFC are included under the country / economy “World”.
+      - name: country_code
+        data_type: string
+        description: Country / Economy Code according to the World Bank country / economy list. Might be different from the ISO country / economy code.
+      - name: currency_of_commitment
+        data_type: string
+        description: The currency in which the loan commitment is denominated.
+      - name: disbursed_amount_usd
+        data_type: decimal(12, 2)
+        description: The amount that has been disbursed from a loan commitment 
+          in equivalent US dollars calculated at the exchange rate on the value date of the individual disbursements.
+      - name: due_3rd_party_usd
+        data_type: decimal(12, 2)
+        description: Amount due to a third party.
+      - name: due_to_ibrd_usd
+        data_type: decimal(12, 2)
+        description: Where the exchange adjustment is shown separately, this is the amount disbursed 
+          and outstanding expressed as a stock of debt in historical US Dollars. 
+          Otherwise, this is the amount due and outstanding as of the End of Period date.
+      - name: effective_date_most_recent
+        data_type: date
+        description: The date on which a legal agreement becomes effective, or is expected to become effective.
+      - name: end_of_period
+        data_type: date
+        description: End of Period Date represents the date as of which balances are shown in the report.
+      - name: exchange_adjustment_usd
+        data_type: decimal(12, 2)
+        description: The increase (decrease) in value of disbursed and outstanding amount due to exchange rate fluctuations. 
+          This amount added to “Due to IBRD” yields “Borrower’s Obligation; includes exchange adjustments on the amounts Due to 3rd parties.
+      - name: first_repayment_date
+        data_type: date
+        description: The date on which principal repayment starts.
+      - name: guarantor
+        data_type: string
+        description: The Guarantor guarantees repayment to the Bank if the borrower does not repay.
+      - name: guarantor_country_code
+        data_type: string
+        description: Country / Economy Code of the Guarantor according to the World Bank country / economy list. Might be different from the ISO country / economy code
+      - name: interest_rate
+        data_type: decimal(4, 2)
+        description: Current Interest rate or service charge applied to loan. 
+          For loans that could have more than one interest rate (e.g. FSL or SCL fixed rate loans), the interest rate is shown as “0”.
+      - name: last_disbursement_date
+        data_type: date
+        description: The date on which the last disbursement was made (prior to the end of period date).
+      - name: last_repayment_date
+        data_type: date
+        description: The date specified in the loan/credit agreement (amended for any partial prepayments) 
+          on which the last principal installment must be repaid by the Borrower.
+      - name: loan_number
+        data_type: string
+        description: For IBRD, a loan number consists of the organization prefix (IBRD) and a five-character label that uniquely identifies the loan within the organization. IDs starting with IBRDB and IBRDG are "Guarantees" and the rest are "Loans".
+      - name: loan_status
+        data_type: string
+        description: The status of the loan
+      - name: loan_type
+        data_type: string
+        description: A type of loan/loan instrument for which distinctive accounting and/or other actions need to be performed.
+          NPL (Non-Pool Loan), CPL (Currency Pool Loan), SCPD (Single Currency Pool Loan - US), SCPM (Single Currency Pool Loan - EU)
+          , SCPY (Single Currency Pool Loan - YE), SCL (Single Currency Loan), FSL (Fixed Spread Loan)
+          , BLNR (IBRD Regular B-Loans), GURB (IBRD Guarantees), BLNC (IBRD Contingency B Loan), and GUBF (IBRD Guarantee Facility). 
+      - name: loans_held
+        data_type: decimal(12, 2)
+        description: NPL (Non-Pool Loan), CPL (Currency Pool Loan), SCPD (Single Currency Pool Loan - US),
+          SCPM (Single Currency Pool Loan - EU), SCPY (Single Currency Pool Loan - YE), SCL (Single Currency Loan),
+          FSL (Fixed Spread Loan), BLNR (IBRD Regular B-Loans), GURB (IBRD Guarantees), BLNC (IBRD Contingency B Loan),
+          and GUBF (IBRD Guarantee Facility).
+      - name: original_principal_amount_usd
+        data_type: decimal(12, 2)
+        description: The original US dollar amount of the loan that is committed and approved.
+      - name: project_id
+        data_type: string
+        description: A Bank project is referenced by a project ID (Pxxxxxxx). 
+          More than one loan, credit, or grant may be associated with one Project ID.
+      - name: project_name
+        data_type: string
+        description: The name of the project to which the loan is associated.
+      - name: region
+        data_type: string
+        description: World Bank Region to which country / economy and loan belong
+      - name: undisbursed_amount_usd
+        data_type: decimal(12, 2)
+        description: The amount of a loan commitment that is still available to be drawn down. 
+          These currency amounts have been converted to US dollars at the exchange rates applicable at the End of Period date.
+      - name: snapshot_date
+        data_type: date
+        description: The date the snapshot was taken. This is not the same as the End of Period date, 
+          which is the date as of which the balances are reported.
+      - name: uploaded_at
+        data_type: timestamp
+        description: The timestamp when the record was ingested into the source table. 
+
+      

@@ -23,7 +23,7 @@ unpacked_loan_snapshots as (
         loans:"agreement_signing_date"::date as agreement_signing_date
         , loans:"board_approval_date"::date as board_approval_date
         , loans:"borrower" as borrower
-        , loans:"borrowers_obligation"::decimal(12, 2) as borrowers_obligation
+        , loans:"borrowers_obligation"::decimal(12, 2) as borrowers_obligation_usd
         , loans:"cancelled_amount"::decimal(12, 2) as cancelled_amount_usd
         , loans:"closed_date_most_recent"::date as closed_date_most_recent
         , loans:"country" as country
@@ -38,13 +38,13 @@ unpacked_loan_snapshots as (
         , loans:"first_repayment_date"::date as first_repayment_date
         , loans:"guarantor" as guarantor
         , loans:"guarantor_country_code" as guarantor_country_code
-        , loans:"interest_rate" as interest_rate
+        , loans:"interest_rate"::decimal(4, 2) as interest_rate
         , loans:"last_disbursement_date"::date as last_disbursement_date
         , loans:"last_repayment_date"::date as last_repayment_date
         , loans:"loan_number" as loan_number
         , loans:"loan_status" as loan_status
         , loans:"loan_type" as loan_type
-        , loans:"loans_held" as loans_held
+        , loans:"loans_held"::decimal(12, 2) as loans_held
         , loans:"original_principal_amount"::decimal(12, 2) as original_principal_amount_usd
         , loans:"project_id" as project_id
         , loans:"project_name" as project_name
