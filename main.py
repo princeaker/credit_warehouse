@@ -1,9 +1,12 @@
+import datetime
+import json
 import os
 import re
 from pathlib import Path
 
 import boto3
 from botocore.exceptions import ClientError
+
 
 
 def key_exists(s3_client, bucket, key):
@@ -15,22 +18,54 @@ def key_exists(s3_client, bucket, key):
     except ClientError:
         print(f"Key '{key}' does not exist in bucket '{bucket}'.")
         return False
-
-def main():
-    client = boto3.client("s3")
-    directory_path = Path("data/")
     
+def add_metadata(filepath, snapshot_date):
+    """the snapshots do not contain metadata about the date of the snapshot 
+    or when the data was uploaded to s3. This will be helpful when working with the 
+    time series data in snowflake."""
+    print (f"Adding metadata to snapshot '{filepath}' with snapshot date '{snapshot_date}'...")
+    with open(filepath, "r") as f:
+            payload = json.load(f)
+    upload_date = datetime.datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d") # Get current date in UTC
+         
+    return {
+            "snapshot_date": snapshot_date,
+            "uploaded_at": upload_date,
+            "loans": payload
+        }
+
+
+def upload_snapshot_to_s3():
+    """ Uploads the ibrd loan snapshot to s3. The snapshot is stored in the data/ directory and is named 
+    in the format "loan_snapshot_YYYY-MM-DD.json". 
+    The snapshot is uploaded to the "cw-world-bank-data" bucket under the "loan-snapshots/YYYY-MM-DD/" prefix. 
+    If a file with the same name already exists in the bucket, the upload is skipped."""
+    directory_path = Path("data/")
     files = os.listdir(directory_path)
+
+    client = boto3.client("s3")
+
     bucket_name = "cw-world-bank-data"
 
     for file in files:
-        prefix = "loan-snapshots/" + file.split("_")[-1].split(".")[0]
-        if key_exists(client, bucket_name, prefix + "/" + file):
-            print(f"File '{file}' already exists in bucket '{bucket_name}' under prefix '{prefix}'. Skipping upload.")
-        else:
-            file_path = directory_path / file
-            client.upload_file(file_path, bucket_name, prefix + "/" + file)
+        file_path = directory_path / file
+        snapshot_date_str = file.split("_")[-1].split(".")[0] # Extract date from filename
+        date_obj = datetime.datetime.strptime(snapshot_date_str, "%m-%d-%Y")
+        snapshot_date = date_obj.strftime("%Y-%m-%d")
+        payload = add_metadata(file_path, snapshot_date)
+        # Use the snapshot date as part of the S3 key to organize the files by date
+        prefix = "loan-snapshots/" + snapshot_date
 
+        if key_exists(client, bucket_name, prefix + "/" + file):
+            print("Skipping upload.")
+        else:
+            client.put_object(Bucket=bucket_name, Key=prefix + "/" + file, Body=json.dumps(payload))
+
+
+
+def main():
+    upload_snapshot_to_s3()
+    
 
 if __name__ == "__main__":
     main()

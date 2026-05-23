@@ -6,3 +6,8 @@ sources:
     schema: RAW
     tables:
       - name: snowpipe_loan_snapshots
+        quoting:
+          identifier: true
+        columns:
+          - name: jsontext
+            data_type: VARIANT

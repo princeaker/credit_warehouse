@@ -30,6 +30,11 @@ provider "aws" {
 }
 
 #Configure the Snowflake Provider
+# We need two Snowflake providers to manage the different roles and permissions required for the Snowflake storage integration and the Snowpipe.
+# The accountadmin role is required to create the storage integration and grant privileges on it,
+# while the sysadmin role is used to create the database, warehouse, and other objects, and grant privileges to the dbt role.
+# This is a workaround for the fact that the Snowflake Terraform provider does not currently support granting privileges 
+#on integrations to roles other than ACCOUNTADMIN, which is required for the Snowpipe integration to work properly.
 provider "snowflake" {
   organization_name = local.organization_name
   account_name      = local.account_name
@@ -174,12 +179,14 @@ resource "snowflake_grant_privileges_to_account_role" "snowpipe_integration_gran
   }
 }
 
+# Create the database and warehouse for the credit data platform
 resource "snowflake_database" "credit_data_platform" {
   provider = snowflake.sysadmin
   name         = "CREDIT_DATA_PLATFORM"
   is_transient = false
 }
 
+# Create a warehouse for the credit data platform with auto-suspend and auto-resume enabled to optimize costs
 resource "snowflake_warehouse" "credit_data_platform_warehouse" {
   provider           = snowflake.sysadmin
   name               = "CREDIT_DATA_PLATFORM_WH"
@@ -201,6 +208,8 @@ resource "snowflake_grant_privileges_to_account_role" "warehouse_usage_grant" {
   }
 }
 
+# When accessing tables from snowflake, the user needs USAGE privilege on 
+# the database and schema, and SELECT privilege on the tables.
 resource "snowflake_grant_privileges_to_account_role" "database_usage_grant" {
   provider = snowflake.sysadmin
   all_privileges = true
@@ -209,6 +218,32 @@ resource "snowflake_grant_privileges_to_account_role" "database_usage_grant" {
   on_account_object {
     object_type = "DATABASE"
     object_name = snowflake_database.credit_data_platform.name
+  }
+}
+
+# the USAGE privilege on the schema allows the user to see the schema and its objects, but not access the data.
+# This is required for the dbt role to be able to see the tables in the RAW schema and query them.
+resource "snowflake_grant_privileges_to_account_role" "schema_usage_grant" {
+  provider = snowflake.sysadmin
+  privileges = ["USAGE"]
+  account_role_name  = var.dbt_role
+
+  on_schema {
+    schema_name= snowflake_schema.raw_schema.fully_qualified_name
+  }
+}
+
+# the SELECT privilege on the tables allows the dbt role to query the data in the tables.
+resource "snowflake_grant_privileges_to_account_role" "schema_tables" {
+  provider = snowflake.sysadmin
+  privileges        = ["SELECT"]
+  account_role_name = var.dbt_role
+
+  on_schema_object {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = snowflake_schema.raw_schema.fully_qualified_name 
+    }
   }
 }
 
@@ -239,7 +274,7 @@ resource "snowflake_table" "world_bank_loan_snapshots" {
   change_tracking = true
 
   column {
-    name    = "jsontext"
+    name    = "JSONTEXT"
     type    = "VARIANT"
   }
 }

@@ -1,3 +1,7 @@
 .terraform/
 terraform.tfvars
 logs/
+.DS_Store
+# Local state files
+*.tfstate
+*.tfstate.*
