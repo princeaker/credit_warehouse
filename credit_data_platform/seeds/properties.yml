@@ -1,0 +1,13 @@
+version: 2
+
+seeds:
+  - name: world_bank_economies
+    description: This seed file contains a list of World Bank economies with their corresponding country codes and regions. 
+      This data is used to enrich the IBRD loan snapshots with additional country-level information.
+    config:
+      column_types:
+        economy: varchar(255)
+        code: varchar(3)
+        region: varchar(255)
+        income_group: varchar(255)
+        lending_category: varchar(10)
