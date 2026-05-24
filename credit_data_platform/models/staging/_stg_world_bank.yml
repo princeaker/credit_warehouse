@@ -118,7 +118,7 @@ models:
         description: The date the snapshot was taken. This is not the same as the End of Period date, 
           which is the date as of which the balances are reported.
       - name: uploaded_at
-        data_type: timestamp
-        description: The timestamp when the record was ingested into the source table. 
+        data_type: date
+        description: The date when the record was ingested into the source table. 
 
       
