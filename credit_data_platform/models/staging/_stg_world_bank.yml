@@ -5,6 +5,9 @@ models:
     description: This staging table unnests the JSON data from the source table and applies basic transformations to 
       make it more usable for downstream models. Each record captures IBRD loan snapshots as of the date the snapshot was taken.
     columns:
+      - name: loan_snapshot_id
+        data_type: string
+        description: unique surrogate key identifier for each loan snapshot record.
       - name: agreement_signing_date
         data_type: date
         description: The date the borrower and the Bank sign the loan agreement
@@ -79,7 +82,8 @@ models:
           on which the last principal installment must be repaid by the Borrower.
       - name: loan_number
         data_type: string
-        description: For IBRD, a loan number consists of the organization prefix (IBRD) and a five-character label that uniquely identifies the loan within the organization. IDs starting with IBRDB and IBRDG are "Guarantees" and the rest are "Loans".
+        description: For IBRD, a loan number consists of the organization prefix (IBRD) and a five-character label that uniquely identifies the loan within the organization. 
+          IDs starting with IBRDB and IBRDG are "Guarantees" and the rest are "Loans".
       - name: loan_status
         data_type: string
         description: The status of the loan
@@ -91,10 +95,7 @@ models:
           , BLNR (IBRD Regular B-Loans), GURB (IBRD Guarantees), BLNC (IBRD Contingency B Loan), and GUBF (IBRD Guarantee Facility). 
       - name: loans_held
         data_type: decimal(12, 2)
-        description: NPL (Non-Pool Loan), CPL (Currency Pool Loan), SCPD (Single Currency Pool Loan - US),
-          SCPM (Single Currency Pool Loan - EU), SCPY (Single Currency Pool Loan - YE), SCL (Single Currency Loan),
-          FSL (Fixed Spread Loan), BLNR (IBRD Regular B-Loans), GURB (IBRD Guarantees), BLNC (IBRD Contingency B Loan),
-          and GUBF (IBRD Guarantee Facility).
+        description: The sum of the disbursed and outstanding amounts (net of repayments, i.e. Due to IBRD) plus undisbursed available amounts
       - name: original_principal_amount_usd
         data_type: decimal(12, 2)
         description: The original US dollar amount of the loan that is committed and approved.

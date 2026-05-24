@@ -20,7 +20,8 @@ unpacked_loan_snapshots as (
 
 , renamed as (
     select
-        loans:"agreement_signing_date"::date as agreement_signing_date
+        {{ dbt_utils.surrogate_key(['loan_number', 'snapshot_date']) }} as loan_snapshot_id
+        , loans:"agreement_signing_date"::date as agreement_signing_date
         , loans:"board_approval_date"::date as board_approval_date
         , loans:"borrower" as borrower
         , loans:"borrowers_obligation"::decimal(12, 2) as borrowers_obligation_usd
