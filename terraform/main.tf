@@ -325,3 +325,129 @@ resource "snowflake_grant_account_role" "dbt_svc_role_grant" {
   role_name = var.dbt_role
   user_name = snowflake_user.dbt_svc.name
 }
+
+
+## lambda function
+## lambda function requres a deployment package and an execution role
+## lambda code must be uploaded as either a zip file or a container image as the deployment package. 
+# Here we use a zip file that contains the lambda function
+
+# Typically a lambda function will automatically come with a log group and log stream.
+# However with terraform we need to manually create these as well as IAM policies to allow 
+# the lambda function to write logs to cloudwatch.
+#lambda log group
+
+# in the future I'd create retries for the lambda function. 
+resource "aws_cloudwatch_log_group" "credit_warehouse_log_group" {
+  name = "/aws/lambda/${var.lambda_function_name}"
+  retention_in_days = 7
+
+  tags = {
+    Environment = "dev"
+    Application = "credit-warehouse"
+    Function   = var.lambda_function_name
+  }
+}
+
+# IAM policy document for Lambda execution assume role
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+# IAM role for Lambda execution
+resource "aws_iam_role" "credit_warehouse_lambda_role" {
+  name               = "credit_warehouse_lambda_execution_role"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+# the lambda execution role policy document to allow the lambda function to write logs
+# get secrets from secrets manager, and put records in S3. 
+resource "aws_iam_policy" "credit_warehouse_lambda_policy" {
+  name        = "credit-warehouse-lambda-policy"
+  description = "adds the permissions for lambda to write logs to cloudwatch"
+  policy      = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = aws_secretsmanager_secret.oer_app_id.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = [aws_s3_bucket.cw_world_bank_data.arn, "${aws_s3_bucket.cw_world_bank_data.arn}/fx-rates/*"]
+      }
+    ]
+  })
+}
+
+#attaching credit warehouse policy to lambda role
+resource "aws_iam_role_policy_attachment" "credit_warehouse_lambda_policy-attach" {
+  role       = aws_iam_role.credit_warehouse_lambda_role.name
+  policy_arn = aws_iam_policy.credit_warehouse_lambda_policy.arn
+}
+
+# Lambda function
+resource "aws_lambda_function" "credit_warehouse_fx_rates_lambda" {
+  filename         = "/Users/princeaker/Projects/credit_warehouse/lambda/deployment_package.zip"
+  function_name    = var.lambda_function_name
+  role             = aws_iam_role.credit_warehouse_lambda_role.arn
+  memory_size      = 150
+  handler          = "lambda_function.lambda_handler"
+  runtime = "python3.12"
+
+  # The source_code_hash is used by Terraform to determine if the code has changed 
+  # and if the Lambda function needs to be updated.
+  source_code_hash = filebase64sha256("/Users/princeaker/Projects/credit_warehouse/lambda/deployment_package.zip")
+
+  timeout = 60
+
+  environment {
+    variables = {
+      SECRET_ARN           = aws_secretsmanager_secret.oer_app_id.arn
+    }
+  }
+
+  # Ensure IAM role and log group are ready
+  depends_on = [
+    aws_iam_role_policy_attachment.credit_warehouse_lambda_policy-attach,
+    aws_cloudwatch_log_group.credit_warehouse_log_group
+  ]
+
+  tags = {
+    Environment = "dev"
+    Application = "credit-warehouse"
+  }
+}
+
+# Secrets Manager secret to store the Open Exchange Rates App ID, 
+# which will be used by the Lambda function to fetch exchange rates.
+# The secret value is set manually in the AWS console.
+resource "aws_secretsmanager_secret" "oer_app_id" {
+  name = "oer_app_id"
+  description = "Open Exchange Rates App ID"
+}
