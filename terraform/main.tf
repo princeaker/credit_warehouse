@@ -428,7 +428,7 @@ resource "aws_lambda_function" "credit_warehouse_fx_rates_lambda" {
 
   environment {
     variables = {
-      SECRET_ARN           = aws_secretsmanager_secret.oer_app_id.arn
+      APP_ID_SECRET_ARN           = aws_secretsmanager_secret.oer_app_id.arn
     }
   }
 
