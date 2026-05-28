@@ -416,7 +416,7 @@ resource "aws_lambda_function" "credit_warehouse_fx_rates_lambda" {
   filename         = "/Users/princeaker/Projects/credit_warehouse/lambda/deployment_package.zip"
   function_name    = var.lambda_function_name
   role             = aws_iam_role.credit_warehouse_lambda_role.arn
-  memory_size      = 150
+  memory_size      = 128
   handler          = "lambda_function.lambda_handler"
   runtime = "python3.12"
 
