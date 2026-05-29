@@ -326,18 +326,20 @@ resource "snowflake_grant_account_role" "dbt_svc_role_grant" {
   user_name = snowflake_user.dbt_svc.name
 }
 
+#####################################################################
+#                           LAMBDA FUNCTION                         #
+#####################################################################
 
-## lambda function
-## lambda function requres a deployment package and an execution role
+## A lambda function requires a deployment package and an execution role
 ## lambda code must be uploaded as either a zip file or a container image as the deployment package. 
 # Here we use a zip file that contains the lambda function
 
 # Typically a lambda function will automatically come with a log group and log stream.
 # However with terraform we need to manually create these as well as IAM policies to allow 
 # the lambda function to write logs to cloudwatch.
-#lambda log group
 
-# in the future I'd create retries for the lambda function. 
+
+# lambda log group
 resource "aws_cloudwatch_log_group" "credit_warehouse_log_group" {
   name = "/aws/lambda/${var.lambda_function_name}"
   retention_in_days = 7
@@ -411,7 +413,8 @@ resource "aws_iam_role_policy_attachment" "credit_warehouse_lambda_policy-attach
   policy_arn = aws_iam_policy.credit_warehouse_lambda_policy.arn
 }
 
-# Lambda function
+# Lambda function to fetch FX rates from Open Exchange Rates API and upload to S3.
+# In the future I'd create retries to handle error events. 
 resource "aws_lambda_function" "credit_warehouse_fx_rates_lambda" {
   filename         = "/Users/princeaker/Projects/credit_warehouse/lambda/deployment_package.zip"
   function_name    = var.lambda_function_name
@@ -450,4 +453,71 @@ resource "aws_lambda_function" "credit_warehouse_fx_rates_lambda" {
 resource "aws_secretsmanager_secret" "oer_app_id" {
   name = "oer_app_id"
   description = "Open Exchange Rates App ID"
+}
+
+#####################################################################
+#                      EVENTBRIDGE SCHEDULER                        #
+#####################################################################
+# EventBridge Scheduler to trigger the Lambda function once a day to fetch FX rates and upload to S3.
+
+# assume role document for scheduler to invoke lambda function
+data "aws_iam_policy_document" "assume__scheduler_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["scheduler.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+# The scheduler execution role needs permissions to invoke the Lambda function.
+resource "aws_iam_role" "scheduler_execution_role" {
+  name               = "credit-warehouse-dev-scheduler-execution-role"
+  assume_role_policy = data.aws_iam_policy_document.assume__scheduler_role.json
+}
+
+# policy to allow scheduler to invoke lambda function
+resource "aws_iam_policy" "scheduler_policy" {
+  name        = "credit-warehouse-dev-fx-rates-scheduler-policy"
+  description = "adds the permissions for scheduler to invoke lambda function"
+  policy      = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = aws_lambda_function.credit_warehouse_fx_rates_lambda.arn
+      }
+    ]
+  })
+}
+
+# Attach the scheduler policy to the scheduler execution role
+resource "aws_iam_role_policy_attachment" "scheduler_policy-attach" {
+  role       = aws_iam_role.scheduler_execution_role.name
+  policy_arn = aws_iam_policy.scheduler_policy.arn
+}
+
+# Create an EventBridge Scheduler schedule to trigger the Lambda function every day at 10pm UTC to fetch FX rates and upload to S3.
+# The time reflects end of day at the World Bank, which is the source of the loan snapshot data
+resource "aws_scheduler_schedule" "credit_warehouse_fx_rates_schedule" {
+  name       = "credit-warehouse-fx-rates-schedule"
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+  start_date = "2026-05-28T09:00:00Z"
+  end_date  = "2026-06-30T00:00:00Z"
+  schedule_expression = "cron(0 22 * * ? *)" # every day at 10 PM UTC
+
+  target {
+    arn      = aws_lambda_function.credit_warehouse_fx_rates_lambda.arn
+    role_arn = aws_iam_role.scheduler_execution_role.arn
+  }
 }
