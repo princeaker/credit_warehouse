@@ -88,6 +88,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "cw_world_bank_data_lifecycle" 
   }
 }
 
+# The aws_caller_identity data source is used to get the current AWS account ID, 
+# which is needed to construct the ARN of the IAM role that Snowflake will assume to access the S3 bucket.
 data "aws_caller_identity" "current" {}
 
 locals {
@@ -137,18 +139,24 @@ resource "aws_iam_role_policy_attachment" "cw_attach_s3_policy" {
   policy_arn = aws_iam_policy.snowflake_access.arn
 }
 
-# Create the Snowflake storage integration to allow Snowflake to access the S3 bucket
+# Create the Snowflake storage integration to allow Snowflake to access the S3 bucket without entering credentials
 # Note: The storage integration will create an IAM user in AWS and grant it permissions to access the S3 bucket. 
 # The IAM role created above will then trust this IAM user to allow Snowflake to access the bucket.
+# A storage integration can support multiple allowed locations, so we can use the same integration for both the loan snapshots and the fx rates.
 resource "snowflake_storage_integration_aws" "cw_s3_integration" {
   provider = snowflake.accountadmin
   name = "cw_snowflake_storage_integration"
   enabled          = true
   storage_provider = "S3"
-  storage_allowed_locations = ["s3://${aws_s3_bucket.cw_world_bank_data.bucket}/loan-snapshots/"]
+  storage_allowed_locations = ["s3://${aws_s3_bucket.cw_world_bank_data.bucket}/loan-snapshots/"
+  , "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/fx-rates/"]
   storage_aws_role_arn = local.snowflake_role_arn
 }
 
+# The Snowflake Terraform provider does not currently support creating the IAM user and updating the trust policy of the IAM role 
+# to allow the Snowflake storage integration to assume the role, so we have to do this manually in AWS after the storage integration is created.
+# principals allows the Snowflake storage integration to assume the IAM role we created for it, and the condition ensures that 
+# only the IAM user created by the storage integration can assume the role, which adds an extra layer of security.
 data "aws_iam_policy_document" "snowflake_trust" {
   statement {
     effect  = "Allow"
@@ -167,7 +175,8 @@ data "aws_iam_policy_document" "snowflake_trust" {
   }
 }
 
-# Update the SYSADMIN role to trust the IAM user created by the Snowflake storage integration
+# Grant USAGE privileges to the SYSADMIN Snowflake role for the Snowpipe integration to work properly. 
+# This allows the role to use it in the Snowpipe copy statement.
 resource "snowflake_grant_privileges_to_account_role" "snowpipe_integration_grant" {
   provider = snowflake.accountadmin
   privileges = ["USAGE"]
@@ -247,7 +256,11 @@ resource "snowflake_grant_privileges_to_account_role" "schema_tables" {
   }
 }
 
-# A stage is a Snowflake object that acts a temporary storage area for data files that are being loaded into Snowflake.
+#####################################################################
+#                    Loan Snapshot Ingestion                        #
+#####################################################################
+
+# A temporary storage area for the loan snapshots that are being loaded into Snowflake.
 resource "snowflake_stage_external_s3" "world_bank_data_stage" {
   provider = snowflake.sysadmin
   name                 = "WORLD_BANK_DATA_STAGE"
@@ -265,6 +278,7 @@ resource "snowflake_schema" "raw_schema" {
   data_retention_time_in_days = 1
 }
 
+# The Snowflake table to store the loan snapshots ingested by Snowpipe into a stage from the S3 bucket.
 resource "snowflake_table" "world_bank_loan_snapshots" {
   provider = snowflake.sysadmin
   name     = "snowpipe_loan_snapshots"
@@ -278,6 +292,7 @@ resource "snowflake_table" "world_bank_loan_snapshots" {
     type    = "VARIANT"
   }
 }
+
 
 # Create the Snowpipe to automatically ingest data from the S3 bucket into the Snowflake table
 # The pipe will create an SQS queue and subscribe it to the S3 bucket notifications to trigger the pipe when new files are added to the bucket
@@ -295,9 +310,8 @@ resource "snowflake_pipe" "world_bank_data_pipe" {
 
   auto_ingest = true
 }
-
 # Set up S3 bucket notification to trigger Snowpipe when new files are added to the bucket
-resource "aws_s3_bucket_notification" "bucket_notification" {
+resource "aws_s3_bucket_notification" "loans_notification" {
   bucket = aws_s3_bucket.cw_world_bank_data.id
 
   queue {
@@ -308,6 +322,67 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     filter_prefix = "loan-snapshots/"
 
     queue_arn = snowflake_pipe.world_bank_data_pipe.notification_channel
+  }
+}
+
+#####################################################################
+#                          FX Rate Ingestion                        #
+#####################################################################
+
+# This stage will be used to load the FX rates data into Snowflake, 
+# which can then be used to convert the loan amounts from USD to local currency in the dbt models.
+resource "snowflake_stage_external_s3" "fx_rates_data_stage" {
+  provider = snowflake.sysadmin
+  name                 = "FX_RATES_DATA_STAGE"
+  database             = snowflake_database.credit_data_platform.name
+  schema              = "PUBLIC"
+  url                  = "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/fx-rates/"
+  storage_integration  = snowflake_storage_integration_aws.cw_s3_integration.name
+
+}
+
+# Snowflake table to store FX rates ingested by Snowpipe into a stage from the S3 bucket.
+resource "snowflake_table" "fx_rates" {
+  provider = snowflake.sysadmin
+  name     = "snowpipe_fx_rates"
+  database = snowflake_database.credit_data_platform.name
+  schema   = snowflake_schema.raw_schema.name
+  data_retention_time_in_days = snowflake_schema.raw_schema.data_retention_time_in_days
+  change_tracking = true
+
+  column {
+    name    = "JSONTEXT"
+    type    = "VARIANT"
+  }
+}
+
+resource "snowflake_pipe" "fx_rates_pipe" {
+  provider = snowflake.sysadmin
+  name     = "FX_RATES_DATA_PIPE"
+  database = snowflake_database.credit_data_platform.name
+  schema  = snowflake_schema.raw_schema.name
+
+  copy_statement = <<-EOT
+    COPY INTO ${snowflake_table.fx_rates.fully_qualified_name}
+    FROM @${snowflake_stage_external_s3.fx_rates_data_stage.fully_qualified_name}
+    FILE_FORMAT = (TYPE = 'JSON')
+    EOT
+
+  auto_ingest = true
+}
+
+# Set up S3 bucket notification to trigger Snowpipe when new fx-rates files are added to the bucket
+resource "aws_s3_bucket_notification" "fx_rates_notification" {
+  bucket = aws_s3_bucket.cw_world_bank_data.id
+
+  queue {
+    id = "snowpipe_fx_rates_notification"
+
+    events = ["s3:ObjectCreated:*"]
+
+    filter_prefix = "fx-rates/"
+
+    queue_arn = snowflake_pipe.fx_rates_pipe.notification_channel
   }
 }
 
