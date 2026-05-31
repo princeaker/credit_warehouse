@@ -256,21 +256,7 @@ resource "snowflake_grant_privileges_to_account_role" "schema_tables" {
   }
 }
 
-#####################################################################
-#                    Loan Snapshot Ingestion                        #
-#####################################################################
-
-# A temporary storage area for the loan snapshots that are being loaded into Snowflake.
-resource "snowflake_stage_external_s3" "world_bank_data_stage" {
-  provider = snowflake.sysadmin
-  name                 = "WORLD_BANK_DATA_STAGE"
-  database             = snowflake_database.credit_data_platform.name
-  schema              = "PUBLIC"
-  url                  = "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/loan-snapshots/"
-  storage_integration  = snowflake_storage_integration_aws.cw_s3_integration.name
-
-}
-
+# Create a RAW schema in the credit data platform database to store the ingested data from the World Bank loan snapshots and FX rates.
 resource "snowflake_schema" "raw_schema" {
   provider = snowflake.sysadmin
   name     = "RAW"
@@ -278,10 +264,25 @@ resource "snowflake_schema" "raw_schema" {
   data_retention_time_in_days = 1
 }
 
+#####################################################################
+#                    IBRD Loan Snapshot Ingestion                   #
+#####################################################################
+
+# A temporary storage area for the ibrd loan snapshots that are being loaded into Snowflake.
+resource "snowflake_stage_external_s3" "world_bank_data_stage" {
+  provider = snowflake.sysadmin
+  name                 = "WORLD_BANK_IBRD_DATA_STAGE"
+  database             = snowflake_database.credit_data_platform.name
+  schema              = "PUBLIC"
+  url                  = "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/loan-snapshots/ibrd/"
+  storage_integration  = snowflake_storage_integration_aws.cw_s3_integration.name
+
+}
+
 # The Snowflake table to store the loan snapshots ingested by Snowpipe into a stage from the S3 bucket.
 resource "snowflake_table" "world_bank_loan_snapshots" {
   provider = snowflake.sysadmin
-  name     = "snowpipe_loan_snapshots"
+  name     = "snowpipe_ibrd_loan_snapshots"
   database = snowflake_database.credit_data_platform.name
   schema   = snowflake_schema.raw_schema.name
   data_retention_time_in_days = snowflake_schema.raw_schema.data_retention_time_in_days
@@ -298,7 +299,7 @@ resource "snowflake_table" "world_bank_loan_snapshots" {
 # The pipe will create an SQS queue and subscribe it to the S3 bucket notifications to trigger the pipe when new files are added to the bucket
 resource "snowflake_pipe" "world_bank_data_pipe" {
   provider = snowflake.sysadmin
-  name     = "WORLD_BANK_DATA_PIPE"
+  name     = "WORLD_BANK_IBRD_DATA_PIPE"
   database = snowflake_database.credit_data_platform.name
   schema  = snowflake_schema.raw_schema.name
 
@@ -319,9 +320,71 @@ resource "aws_s3_bucket_notification" "loans_notification" {
 
     events = ["s3:ObjectCreated:*"]
 
-    filter_prefix = "loan-snapshots/"
+    filter_prefix = "loan-snapshots/ibrd/"
 
     queue_arn = snowflake_pipe.world_bank_data_pipe.notification_channel
+  }
+}
+
+#####################################################################
+#                     IDA Loan Snapshot Ingestion                   #
+#####################################################################
+
+# A temporary storage area for the ida loan snapshots that are being loaded into Snowflake.
+resource "snowflake_stage_external_s3" "world_bank_ida_data_stage" {
+  provider = snowflake.sysadmin
+  name                 = "WORLD_BANK_IDA_DATA_STAGE"
+  database             = snowflake_database.credit_data_platform.name
+  schema              = "PUBLIC"
+  url                  = "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/loan-snapshots/ida/"
+  storage_integration  = snowflake_storage_integration_aws.cw_s3_integration.name
+
+}
+
+# The Snowflake table to store the loan snapshots ingested by Snowpipe into a stage from the S3 bucket.
+resource "snowflake_table" "world_bank_ida_loan_snapshots" {
+  provider = snowflake.sysadmin
+  name     = "snowpipe_ida_loan_snapshots"
+  database = snowflake_database.credit_data_platform.name
+  schema   = snowflake_schema.raw_schema.name
+  data_retention_time_in_days = snowflake_schema.raw_schema.data_retention_time_in_days
+  change_tracking = true
+
+  column {
+    name    = "JSONTEXT"
+    type    = "VARIANT"
+  }
+}
+
+
+# Create the Snowpipe to automatically ingest data from the S3 bucket into the Snowflake table
+# The pipe will create an SQS queue and subscribe it to the S3 bucket notifications to trigger the pipe when new files are added to the bucket
+resource "snowflake_pipe" "world_bank_ida_data_pipe" {
+  provider = snowflake.sysadmin
+  name     = "WORLD_BANK_IDA_DATA_PIPE"
+  database = snowflake_database.credit_data_platform.name
+  schema  = snowflake_schema.raw_schema.name
+
+  copy_statement = <<-EOT
+    COPY INTO ${snowflake_table.world_bank_ida_loan_snapshots.fully_qualified_name}
+    FROM @${snowflake_stage_external_s3.world_bank_ida_data_stage.fully_qualified_name}
+    FILE_FORMAT = (TYPE = 'JSON')
+    EOT
+
+  auto_ingest = true
+}
+# Set up S3 bucket notification to trigger Snowpipe when new files are added to the bucket
+resource "aws_s3_bucket_notification" "ida_loans_notification" {
+  bucket = aws_s3_bucket.cw_world_bank_data.id
+
+  queue {
+    id = "snowpipe_ida_notification"
+
+    events = ["s3:ObjectCreated:*"]
+
+    filter_prefix = "loan-snapshots/ida/"
+
+    queue_arn = snowflake_pipe.world_bank_ida_data_pipe.notification_channel
   }
 }
 
