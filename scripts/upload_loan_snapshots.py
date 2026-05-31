@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 import boto3
@@ -73,7 +74,12 @@ def upload_snapshot_to_s3(files_to_upload: list[str] = None):
 
 
 def main():
-    upload_snapshot_to_s3()
+    if len(sys.argv) > 1:
+        files_to_upload = sys.argv[1:]
+    else:
+        files_to_upload = None
+        
+    upload_snapshot_to_s3(files_to_upload)
     
 
 if __name__ == "__main__":
