@@ -35,17 +35,21 @@ def add_metadata(filepath, snapshot_date):
         }
 
 
-def upload_snapshot_to_s3():
+def upload_snapshot_to_s3(files_to_upload: list[str] = None):
     """ Uploads the ibrd loan snapshot to s3. The snapshot is stored in the data/ directory and is named 
     in the format "loan_snapshot_YYYY-MM-DD.json". 
     The snapshot is uploaded to the "cw-world-bank-data" bucket under the "loan-snapshots/YYYY-MM-DD/" prefix. 
     If a file with the same name already exists in the bucket, the upload is skipped."""
     directory_path = Path("data/")
-    files = os.listdir(directory_path)
 
     client = boto3.client("s3")
 
     bucket_name = "cw-world-bank-data"
+
+    if files_to_upload:
+        files = files_to_upload if isinstance(files_to_upload, list) else [files_to_upload]
+    else:
+        files = os.listdir(directory_path)
 
     for file in files:
         file_path = directory_path / file
@@ -54,7 +58,12 @@ def upload_snapshot_to_s3():
         snapshot_date = date_obj.strftime("%Y-%m-%d")
         payload = add_metadata(file_path, snapshot_date)
         # Use the snapshot date as part of the S3 key to organize the files by date
-        prefix = "loan-snapshots/" + snapshot_date
+        if "ida" in file.lower():
+            prefix = "loan-snapshots/ida/" + snapshot_date
+        elif "ibrd" in file.lower():
+            prefix = "loan-snapshots/ibrd/" + snapshot_date
+        else:
+            pass
 
         if key_exists(client, bucket_name, prefix + "/" + file):
             print("Skipping upload.")

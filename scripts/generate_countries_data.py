@@ -6,35 +6,6 @@ from country_config import COUNTRY_CURRENCIES
 import pandas as pd
 import pycountry
 import requests
-import snowflake.connector
-from dotenv import load_dotenv
-
-
-
-
-# load_dotenv()  # Load environment variables from .env file
-
-# conn_params = {
-#     "user": os.getenv("SNOWFLAKE_USER"),
-#     "account": os.getenv("SNOWFLAKE_ACCOUNT"),
-#     "authenticator": "SNOWFLAKE_JWT",
-#     "private_key_file": os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH"),
-#     "warehouse": "CREDIT_DATA_PLATFORM_WH",
-#     "database": "CREDIT_DATA_PLATFORM",
-#     "schema": "dev"
-# }
-
-# ctx = snowflake.connector.connect(
-#     **conn_params
-# )
-# cs = ctx.cursor()
-# try:
-#     cs.execute("SELECT distinct country, lower(country_code) as country_code from dev.stg_ibrd__loan_snapshots;")
-#     country_list = cs.fetchall()
-
-# finally:
-#     cs.close()
-# ctx.close()
 
 def main():
     page = 1
