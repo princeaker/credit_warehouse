@@ -5,3 +5,4 @@ logs/
 # Local state files
 *.tfstate
 *.tfstate.*
+.env

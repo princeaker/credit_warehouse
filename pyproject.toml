@@ -7,4 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
     "boto3>=1.42.63",
     "dbt>=1.0.0.40.15",
+    "pandas>=3.0.3",
+    "pycountry>=26.2.16",
+    "python-dotenv>=1.2.2",
+    "snowflake-connector-python>=4.6.0",
 ]
