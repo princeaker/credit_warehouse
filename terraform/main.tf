@@ -256,6 +256,21 @@ resource "snowflake_grant_privileges_to_account_role" "schema_tables" {
   }
 }
 
+# The permission resource above with "all" only covers tables at a point in time 
+# NEW — "future" covers any table created after this grant is applied
+resource "snowflake_grant_privileges_to_account_role" "schema_future_tables" {
+  provider          = snowflake.sysadmin
+  privileges        = ["SELECT"]
+  account_role_name = var.dbt_role
+
+  on_schema_object {
+    future {
+      object_type_plural = "TABLES"
+      in_schema          = snowflake_schema.raw_schema.fully_qualified_name
+    }
+  }
+}
+
 # Create a RAW schema in the credit data platform database to store the ingested data from the World Bank loan snapshots and FX rates.
 resource "snowflake_schema" "raw_schema" {
   provider = snowflake.sysadmin
