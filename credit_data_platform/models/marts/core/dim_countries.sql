@@ -1,15 +1,17 @@
 with source as (
-    select * from {{ ref('world_bank_economies') }}
+    select * from {{ ref('countries') }}
 )
 
 , final as (
     select
-        ({{ dbt_utils.generate_surrogate_key(['economy']) }}) as country_id
-        , economy as country
-        , code as country_code
+        ({{ dbt_utils.generate_surrogate_key(['country']) }}) as country_id
+        , country
+        , country_code
+        , iso2_code
         , region
         , income_group
-        , lending_category
+        , lending_type
+        , currency
     from source
 )
 

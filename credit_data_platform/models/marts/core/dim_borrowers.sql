@@ -16,7 +16,7 @@ with source as (
                 then 1 else 0 end)) as closed_loans
         , sum(case when 
             (loan_status in ('Fully Repaid'))
-                then 1 else 0 end)) as repaid_loans
+                then 1 else 0 end) as repaid_loans
     from source
     group by borrower, country, end_of_period
 )
