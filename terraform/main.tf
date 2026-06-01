@@ -268,6 +268,7 @@ resource "snowflake_schema" "raw_schema" {
 #                    IBRD Loan Snapshot Ingestion                   #
 #####################################################################
 
+#NOTE: Need to rename these resources here to include ibrd in the name
 # A temporary storage area for the ibrd loan snapshots that are being loaded into Snowflake.
 resource "snowflake_stage_external_s3" "world_bank_data_stage" {
   provider = snowflake.sysadmin
@@ -282,7 +283,7 @@ resource "snowflake_stage_external_s3" "world_bank_data_stage" {
 # The Snowflake table to store the loan snapshots ingested by Snowpipe into a stage from the S3 bucket.
 resource "snowflake_table" "world_bank_loan_snapshots" {
   provider = snowflake.sysadmin
-  name     = "snowpipe_ibrd_loan_snapshots"
+  name     = "SNOWPIPE_IBRD_LOAN_SNAPSHOTS"
   database = snowflake_database.credit_data_platform.name
   schema   = snowflake_schema.raw_schema.name
   data_retention_time_in_days = snowflake_schema.raw_schema.data_retention_time_in_days
@@ -344,7 +345,7 @@ resource "snowflake_stage_external_s3" "world_bank_ida_data_stage" {
 # The Snowflake table to store the loan snapshots ingested by Snowpipe into a stage from the S3 bucket.
 resource "snowflake_table" "world_bank_ida_loan_snapshots" {
   provider = snowflake.sysadmin
-  name     = "snowpipe_ida_loan_snapshots"
+  name     = "SNOWPIPE_IDA_LOAN_SNAPSHOTS"
   database = snowflake_database.credit_data_platform.name
   schema   = snowflake_schema.raw_schema.name
   data_retention_time_in_days = snowflake_schema.raw_schema.data_retention_time_in_days
@@ -407,7 +408,7 @@ resource "snowflake_stage_external_s3" "fx_rates_data_stage" {
 # Snowflake table to store FX rates ingested by Snowpipe into a stage from the S3 bucket.
 resource "snowflake_table" "fx_rates" {
   provider = snowflake.sysadmin
-  name     = "snowpipe_fx_rates"
+  name     = "SNOWPIPE_FX_RATES"
   database = snowflake_database.credit_data_platform.name
   schema   = snowflake_schema.raw_schema.name
   data_retention_time_in_days = snowflake_schema.raw_schema.data_retention_time_in_days
