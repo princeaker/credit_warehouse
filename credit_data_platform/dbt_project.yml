@@ -20,5 +20,9 @@ models:
     # Materialize staging models as views, and marts as tables
     staging:
       +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: staging
     marts:
       +materialized: table

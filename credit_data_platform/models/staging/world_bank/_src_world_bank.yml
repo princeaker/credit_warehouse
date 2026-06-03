@@ -5,11 +5,22 @@ sources:
     database: CREDIT_DATA_PLATFORM
     schema: RAW
     tables:
-      - name: snowpipe_loan_snapshots
+      - name: snowpipe_ibrd_loan_snapshots
         description: This table is loaded by a Snowpipe from JSON files landing in a Snowflake stage. Each record
           captures IBRD loan snapshots as of the date the snapshot was taken.The source data is loaded as JSON into a VARIANT column.
-        quoting:
-          identifier: true
+        columns:
+          - name: jsontext
+            data_type: VARIANT
+        config:
+          freshness:
+          # This freshness check calculates freshness from warehouse table metadata
+          # rather than including a timestamp column in the source data. 
+          # This is because the source data is loaded as json into a variant column
+          # which does not allow additional columns to be defined in the target table.
+            warn_after: {count: 30, period: day}
+      - name: snowpipe_ida_loan_snapshots
+        description: This table is loaded by a Snowpipe from JSON files landing in a Snowflake stage. Each record
+          captures IDA loan snapshots as of the date the snapshot was taken.The source data is loaded as JSON into a VARIANT column.
         columns:
           - name: jsontext
             data_type: VARIANT
