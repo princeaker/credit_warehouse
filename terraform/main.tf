@@ -289,7 +289,7 @@ resource "snowflake_stage_external_s3" "world_bank_data_stage" {
   provider = snowflake.sysadmin
   name                 = "WORLD_BANK_IBRD_DATA_STAGE"
   database             = snowflake_database.credit_data_platform.name
-  schema              = "PUBLIC"
+  schema              = "RAW"
   url                  = "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/loan-snapshots/ibrd/"
   storage_integration  = snowflake_storage_integration_aws.cw_s3_integration.name
 
@@ -327,20 +327,7 @@ resource "snowflake_pipe" "world_bank_data_pipe" {
 
   auto_ingest = true
 }
-# Set up S3 bucket notification to trigger Snowpipe when new files are added to the bucket
-resource "aws_s3_bucket_notification" "loans_notification" {
-  bucket = aws_s3_bucket.cw_world_bank_data.id
 
-  queue {
-    id = "snowpipe_notification"
-
-    events = ["s3:ObjectCreated:*"]
-
-    filter_prefix = "loan-snapshots/ibrd/"
-
-    queue_arn = snowflake_pipe.world_bank_data_pipe.notification_channel
-  }
-}
 
 #####################################################################
 #                     IDA Loan Snapshot Ingestion                   #
@@ -351,7 +338,7 @@ resource "snowflake_stage_external_s3" "world_bank_ida_data_stage" {
   provider = snowflake.sysadmin
   name                 = "WORLD_BANK_IDA_DATA_STAGE"
   database             = snowflake_database.credit_data_platform.name
-  schema              = "PUBLIC"
+  schema              = "RAW"
   url                  = "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/loan-snapshots/ida/"
   storage_integration  = snowflake_storage_integration_aws.cw_s3_integration.name
 
@@ -389,20 +376,6 @@ resource "snowflake_pipe" "world_bank_ida_data_pipe" {
 
   auto_ingest = true
 }
-# Set up S3 bucket notification to trigger Snowpipe when new files are added to the bucket
-resource "aws_s3_bucket_notification" "ida_loans_notification" {
-  bucket = aws_s3_bucket.cw_world_bank_data.id
-
-  queue {
-    id = "snowpipe_ida_notification"
-
-    events = ["s3:ObjectCreated:*"]
-
-    filter_prefix = "loan-snapshots/ida/"
-
-    queue_arn = snowflake_pipe.world_bank_ida_data_pipe.notification_channel
-  }
-}
 
 #####################################################################
 #                          FX Rate Ingestion                        #
@@ -414,7 +387,7 @@ resource "snowflake_stage_external_s3" "fx_rates_data_stage" {
   provider = snowflake.sysadmin
   name                 = "FX_RATES_DATA_STAGE"
   database             = snowflake_database.credit_data_platform.name
-  schema              = "PUBLIC"
+  schema              = "RAW"
   url                  = "s3://${aws_s3_bucket.cw_world_bank_data.bucket}/fx-rates/"
   storage_integration  = snowflake_storage_integration_aws.cw_s3_integration.name
 
@@ -450,18 +423,29 @@ resource "snowflake_pipe" "fx_rates_pipe" {
   auto_ingest = true
 }
 
-# Set up S3 bucket notification to trigger Snowpipe when new fx-rates files are added to the bucket
-resource "aws_s3_bucket_notification" "fx_rates_notification" {
+# Set up S3 bucket notification to trigger Snowpipe when new files are added to the bucket
+resource "aws_s3_bucket_notification" "snowpipe_notifications" {
   bucket = aws_s3_bucket.cw_world_bank_data.id
 
   queue {
-    id = "snowpipe_fx_rates_notification"
+    id            = "snowpipe_ibrd_notification"
+    events        = ["s3:ObjectCreated:*"]
+    filter_prefix = "loan-snapshots/ibrd/"
+    queue_arn     = snowflake_pipe.world_bank_data_pipe.notification_channel
+  }
 
-    events = ["s3:ObjectCreated:*"]
+  queue {
+    id            = "snowpipe_ida_notification"
+    events        = ["s3:ObjectCreated:*"]
+    filter_prefix = "loan-snapshots/ida/"
+    queue_arn     = snowflake_pipe.world_bank_ida_data_pipe.notification_channel
+  }
 
+  queue {
+    id            = "snowpipe_fx_rates_notification"
+    events        = ["s3:ObjectCreated:*"]
     filter_prefix = "fx-rates/"
-
-    queue_arn = snowflake_pipe.fx_rates_pipe.notification_channel
+    queue_arn     = snowflake_pipe.fx_rates_pipe.notification_channel
   }
 }
 
