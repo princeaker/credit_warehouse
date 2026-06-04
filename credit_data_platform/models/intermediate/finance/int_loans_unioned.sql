@@ -112,6 +112,7 @@ ida_loan_snapshots as (
         , country_code
         , currency_of_commitment
         , disbursed_amount_usd
+        , undisbursed_amount_usd
         , due_3rd_party_usd
         , due_to_bank_usd
         , effective_date_most_recent
