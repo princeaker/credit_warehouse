@@ -4,11 +4,9 @@ with source as (
 
 , borrowers as (
     select 
-        {{ dbt_utils.generate_surrogate_key(['borrower', 'country']) }} as borrower_id
+        {{ dbt_utils.generate_surrogate_key(['borrower', 'country_code']) }} as borrower_id
         , borrower
-        , country
         , country_code
-        , region
     from source
 )
 

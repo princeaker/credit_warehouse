@@ -4,10 +4,10 @@ with source as (
 
 , final as (
     select
-        ({{ dbt_utils.generate_surrogate_key(['country']) }}) as country_id
+        ({{ dbt_utils.generate_surrogate_key(['iso2_code']) }}) as country_id
         , country
-        , country_code
-        , iso2_code
+        , country_code as country_code_alpha_3
+        , iso2_code as country_code
         , region
         , income_group
         , lending_type

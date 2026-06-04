@@ -5,7 +5,7 @@ with loans as (
 , renamed as (
     select 
         {{ dbt_utils.generate_surrogate_key(['loan_number']) }} as loan_id
-        , {{ dbt_utils.generate_surrogate_key(['borrower', 'country']) }} as borrower_id
+        , {{ dbt_utils.generate_surrogate_key(['borrower', 'country_code']) }} as borrower_id
         , loan_number
         , agreement_signing_date
         , board_approval_date
