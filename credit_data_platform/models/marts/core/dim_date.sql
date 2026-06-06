@@ -8,7 +8,7 @@ with date_spine as (
 
 , extracted_dates as (
     select 
-        date_day as day
+        date_day as calendar_date
         , extract(year from date_day) as year
         , extract(quarter from date_day) as quarter
         , extract(month from date_day) as month
@@ -26,7 +26,7 @@ with date_spine as (
 
 , final as (
     select 
-        day
+        calendar_date
         , year
         , quarter
         , month

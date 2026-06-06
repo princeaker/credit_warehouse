@@ -13,3 +13,138 @@ models:
       - name: country_code
         data_type: string
         description: The standardized country code associated with the borrower, aligned with ISO codes where possible.
+  - name: dim_countries
+    description:
+    columns:
+      - name: country_id
+        data_type: string
+        description: A unique identifier for each country.
+      - name: country
+        data_type: string
+        description: The name of the country or economy according to the World Bank economy list.
+      - name: country_code_alpha_3
+        data_type: string
+        description: The 3 letter ISO 3166-1 alpha-3 country code.
+      - name: country_code
+        data_type: string
+        description: The standardized 2 letter ISO 3166-1 alpha-2 country code associated with the borrower, aligned with ISO codes where possible.
+      - name: region
+        data_type: string
+        description: The World Bank administrative region to which the country belongs.
+      - name: income_group
+        data_type: string
+        description: The income group to which the country belongs.
+      - name: lending_type
+        data_type: string
+        description: The type of lending associated with the country.
+      - name: currency
+        data_type: string
+        description: The ISO 4217 currency code for the country's currency.
+  - name: dim_date
+    description:
+    columns:
+      - name: calendar_date
+        data_type: date
+        description: The calendar date in YYYY-MM-DD format.
+      - name: year
+      - name: quarter
+      - name: month
+        data_type: integer
+        description: The month number (1-12) extracted from the calendar date.
+      - name: month_name
+        data_type: string
+        description: The full name of the month extracted from the calendar date.
+      - name: week_of_year
+        data_type: integer
+        description: The week number of the year extracted from the calendar date.
+      - name: day_of_week
+        data_type: integer
+        description: The day of the week extracted from the calendar date, where  0= Sunday, 1 = Monday, ..., 6 = Saturday.
+      - name: day_name
+        data_type: string
+        description: The full name of the day of the week extracted from the calendar date.
+      - name: is_weekend
+        data_type: boolean
+        description: A boolean flag indicating whether the calendar date falls on a weekend (Saturday or Sunday).
+      - name: week_start_date
+        data_type: date
+        description: The date of the Monday of the week to which the calendar date belongs.
+      - name: week_end_date
+        data_type: date
+        description: The date of the Sunday of the week to which the calendar date belongs.
+      - name: month_start_date
+        data_type: date
+        description: The date of the first day of the month to which the calendar date belongs.
+      - name: month_end_date
+        data_type: date
+        description: The date of the last day of the month to which the calendar date belongs.
+      - name: quarter_start_date
+        data_type: date
+        description: The date of the first day of the quarter to which the calendar date belongs.
+      - name: quarter_end_date
+        data_type: date
+        description: The date of the last day of the quarter to which the calendar date belongs.
+  - name: dim_loans
+    description: This dimension table provides a unique list of loans across both IBRD and IDA datasets. The grain is at the loan level
+    columns:
+      - name: loan_id
+      - name: borrower_id
+      - name: loan_number
+      - name: agreement_signing_date
+      - name: board_approval_date
+      - name: original_principal_amount_usd
+      - name: cancelled_amount_usd
+      - name: closed_date_most_recent
+      - name: currency_of_commitment
+      - name: effective_date_most_recent
+      - name: exchange_adjustment_usd
+      - name: first_repayment_date
+      - name: guarantor
+      - name: guarantor_country_code
+      - name: interest_rate
+      - name: last_disbursement_date
+      - name: last_repayment_date
+      - name: loan_status
+      - name: loan_type
+      - name: project_id
+      - name: project_name
+  - name: fact_fx_rates
+    description: Captures daily foreign exchange rates to enable currency conversions for the loan data.
+    columns:
+      - name: fx_rate_id
+        data_type: string
+        description: A unique identifier for each exchange rate record.
+      - name: reported_date
+        data_type: date
+        description: The date when the exchange rate was reported.
+      - name: base_currency
+        data_type: string
+        description: The base currency for the exchange rate, which is always USD in this dataset.
+      - name: quote_currency
+        data_type: string
+        description: The currency for which the exchange rate to USD is being reported.
+      - name: fx_rate
+        data_type: decimal(16, 8)
+        description: The exchange rate of the quote currency to USD.
+  - name: fact_loan_balances
+    description: Contains the monthly loan balance information for each loan in USD.
+    columns:
+      - name: loan_date_id
+      - name: loan_id
+      - name: borrower_id
+      - name: country_id
+      - name: balance_date
+      - name: borrowers_obligation_usd
+      - name: interest_rate
+      - name: cancelled_amount_usd
+      - name: disbursed_amount_usd
+      - name: undisbursed_amount_usd
+      - name: loans_held_usd
+      - name: due_3rd_party_usd
+      - name: due_to_bank_usd
+      - name: exchange_adjustment_usd
+      - name: loan_status
+      - name: repaid_3rd_party_usd
+      - name: repaid_to_bank_usd
+      - name: source_system
+      - name: is_current

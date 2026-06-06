@@ -5,7 +5,6 @@ with fx_rates as (
         , base_currency
         , quote_currency
         , fx_rate
-        , uploaded_at
     from {{ ref('stg_oer__fx_rates') }}
 )
 

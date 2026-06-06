@@ -120,5 +120,46 @@ models:
       - name: uploaded_at
         data_type: date
         description: The date when the record was ingested into the source table. 
+  - name: stg_ida__loan_snapshots
+    description: This staging table unnests the JSON data from the source table and applies basic transformations to 
+      make it more usable for downstream models. Each record captures IDA loan snapshots as of the date the snapshot was taken.
+    columns:
+      - name: loan_snapshot_id
+        data_type: string
+        description: unique surrogate key identifier for each loan snapshot record.
+      - name: agreement_signing_date
+        data_type: date
+        description: The date the borrower and the Bank sign the loan agreement
+      - name: board_approval_date
+        data_type: date
+        description: The date the World Bank approved the loan
+      - name: borrower
+        data_type: string
+        description: The name of the borrower
+      - name: borrowers_obligation_usd
+        data_type: decimal(12, 2)
+        description: The Borrower Obligation is the outstanding balance for the loan as of the end of period date in US dollars equivalent. 
+          The Borrower's Obligation includes the amounts outstanding Due to 3rd parties.
+      - name: cancelled_amount_usd
+        data_type: decimal(12, 2)
+        description: The portion of the undisbursed balance which has been cancelled (i.e. no longer available for future disbursement). 
+          Cancellations include terminations (where approved loan agreements were never signed)
+      - name: closed_date_most_recent
+        data_type: date
+        description: The date specified in the legal agreement (or extension) after which the Bank may, by notice to the borrower, 
+          terminate the right to make withdrawals from the loan account.
+      - name: country
+        data_type: string
+        description: Country / Economy to which loan has been issued. Loans to the IFC are included under the country / economy “World”.
+      - name: country_code
+        data_type: string
+        description: Country / Economy Code according to the World Bank country / economy list. Might be different from the ISO country / economy code.
+      - name: currency_of_commitment
+        data_type: string
+        description: The currency in which the loan commitment is denominated.
+      - name: disbursed_amount_usd
+        data_type: decimal(12, 2)
+        description: The amount that has been disbursed from a loan commitment 
+          in equivalent US dollars calculated at the exchange rate on the value date of the individual disbursements.
 
       

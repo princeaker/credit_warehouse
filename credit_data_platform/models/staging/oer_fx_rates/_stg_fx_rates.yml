@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: stg_oer__fx_rates
+    description: Each record contains the exchange rate of a given currency to USD for a given date.
+    columns:
+      - fx_rate_id:
+          data_type: string
+          description: A unique identifier for each exchange rate record.
+      - uploaded_at:
+          data_type: timestamp
+          description: The timestamp when the exchange rate record was ingested into the source table.
+      - base_currency:
+          data_type: string
+          description: The base currency for the exchange rate, which is always USD in this dataset.
+      - quote_currency:
+          data_type: string
+          description: The currency for which the exchange rate to USD is being reported.
+      - fx_rate:
+          data_type: decimal(16, 8)
+          description: The exchange rate of the quote currency to USD.
+      - reported_at:
+          data_type: timestamp
+          description: The timestamp when the exchange rate was reported.
+      - reported_date:
+          data_type: date
+          description: The date when the exchange rate was reported.
